@@ -15,8 +15,7 @@ obj, til, atz通通生成32位png，如果你需要生成不同格式，可能�
 ### 生成`start.map`,
 原有的block格式不要了，(200*200)的地图会直接生成(200 * 200)的地图数据。
 
-````c
-
+````c
 struct MAP_CELL{
     int tileId,
     int objId,
