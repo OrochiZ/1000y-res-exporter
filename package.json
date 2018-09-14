@@ -1,0 +1,17 @@
+{
+  "name": "1000y_map_editor",
+  "version": "1.0.0",
+  "description": "1000y Resources Exporter",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [
+    "1000y"
+  ],
+  "author": "yuantao",
+  "license": "ISC",
+  "dependencies": {
+    "electron": "2.0.9"
+  }
+}
