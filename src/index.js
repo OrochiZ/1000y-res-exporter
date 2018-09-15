@@ -137,7 +137,7 @@ function render() {
                 if (cell.objId > 0) {
                     const obj = objReader.getObj(cell.objId);
                     if (obj) {
-                        console.log(obj.header)
+
                         let data = new ImageData(Uint8ClampedArray.from(obj.images[0]), obj.header.iWidth, obj.header.iHeight);
                         temp.getContext('2d').putImageData(data, 0, 0);
                         ctx.drawImage(temp, 0, 0, obj.header.iWidth, obj.header.iHeight, screenX * 32 + obj.header.ipx, screenY * 24 + obj.header.ipy, obj.header.iWidth, obj.header.iHeight);
