@@ -1,26 +1,43 @@
 const { app, BrowserWindow, dialog } = require('electron');
 const { ipcMain } = require('electron');
-const Menu = require('./src/Menu');
+const { Config, Menu, getPage } = require('./src/common');
+const { onViewSetChange, viewSet } = Config;
+onViewSetChange(() => {
+    if (ipcRender) {
+        ipcRender.send('viewsetchange', viewSet);
+    }
+});
+
+
 let win;
 let menu;
 let ipcRender;
 
 ipcMain.on('page_init', (e) => {
     ipcRender = e.sender;
+    setTimeout(() => {
+        ipcRender.send('OPEN', '/Users/yuantao/Documents/newversion/start.map');
+    }, 500);
 });
-
-
+ipcMain.on('SHOW_ERROR', (evt, message) => {
+    dialog.showErrorBox('Error', message);
+})
 
 
 function createWindow() {
-    win = new BrowserWindow({ backgroundColor: 0, width: 1024, height: 768 })
-    win.loadFile('index.html');
+    win = new BrowserWindow({ backgroundColor: '#272822', width: 1024, height: 768, show: false })
+    win.loadURL(getPage('index'));
+    win.once('ready-to-show', () => {
+        win.show();
+    })
+    //win.loadFile(`build/index.html`);
 
     menu = Menu();
     win.on('OPEN', (type) => {
         let nType = type.substring(1);
         if (ipcRender) {
-            const files = dialog.showOpenDialog(win, { filters: [{ name: `${nType.toUpperCase()} File`, extensions: [nType] }], properties: ['openFile'] });
+            const files = dialog.showOpenDialog(win,
+                { filters: [{ name: `${nType.toUpperCase()} File`, extensions: [nType] }], properties: ['openFile'] });
             if (files) {
                 ipcRender.send('OPEN', files[0]);
             }

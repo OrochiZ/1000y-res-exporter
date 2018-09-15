@@ -8,6 +8,7 @@ class FileStream {
     read(filename) {
         if (!!filename)
             this.filename = filename;
+
         if (!fs.existsSync(this.filename)) {
             return false;
         }

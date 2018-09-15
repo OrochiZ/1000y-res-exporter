@@ -7,7 +7,7 @@ class ObjReader extends FileStream {
 
     read(filename) {
         if (!super.read(filename)) {
-            return;
+            return false;
         }
 
         this.fileHeader = this.readFileHeader();

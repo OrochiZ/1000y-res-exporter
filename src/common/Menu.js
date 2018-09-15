@@ -1,5 +1,6 @@
 const { app, Menu } = require('electron');
 const Events = require('events');
+const { viewSet, toggleViewSet } = require('./Config');
 
 let menu_;
 
@@ -36,9 +37,29 @@ const template = [
             { role: 'forcereload' },
             { role: 'toggledevtools' },
             { type: 'separator' },
-            { role: 'resetzoom' },
-            { role: 'zoomin' },
-            { role: 'zoomout' },
+
+            {
+                label: 'Show base tile', type: 'checkbox', checked: viewSet.baseTile,
+                click: () => toggleViewSet('baseTile')
+            },
+            {
+                label: 'Show over tile', type: 'checkbox', checked: viewSet.overTile,
+                click: () => toggleViewSet('overTile')
+            },
+            {
+                label: 'Show object', type: 'checkbox', checked: viewSet.obj,
+                click: () => toggleViewSet('obj')
+            },
+            {
+                label: 'Show walkable', type: 'checkbox', checked: viewSet.walkable,
+                click: () => toggleViewSet('walkable')
+            },
+            {
+                label: 'Show Grid', type: 'checkbox', checked: viewSet.grid,
+                click: () => toggleViewSet('grid')
+            },
+
+
             { type: 'separator' },
             { role: 'togglefullscreen' }
         ]
@@ -48,6 +69,20 @@ const template = [
         submenu: [
             { role: 'minimize' },
             { role: 'close' }
+        ]
+    },
+    {
+        label: 'Tools',
+        submenu: [
+            {
+                label: 'ATZ Exporter'
+            },
+            {
+                label: 'Effect Exporter'
+            },
+            {
+                label: 'Sound Exporter'
+            }
         ]
     },
     {
