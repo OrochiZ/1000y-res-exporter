@@ -352,8 +352,7 @@ class App extends React.Component {
             fs.mkdir(path.join(dir, mapName, 'obj'));
         }
 
-        this.saveObj(dir);
-        return;
+
 
         for (let y = 0; y < vCross; y++) {
             for (let x = 0; x < hCross; x++) {
@@ -411,11 +410,18 @@ class App extends React.Component {
     saveMapCell(dir) {
         const mapName = mapReader.getName();
         let str = '';
+        let cells = [];
         for (let i = 0; i < mapReader.cells.length; i++) {
             let cell = mapReader.cells[i];
-            str += `${cell.objId},${cell.objNumber},${cell.roofId},${cell.bMove}\n`;
+            cells.push({
+                objId: cell.objId,
+                objNumber: cell.objNumber,
+                roofId: cell.roofId,
+                bMove: cell.bMove
+            })
+            // str += `${cell.objId},${cell.objNumber},${cell.roofId},${cell.bMove}\n`;
         }
-        fs.writeFileSync(path.join(dir, mapName, `cell.txt`), str);
+        fs.writeFileSync(path.join(dir, mapName, `map.json`), JSON.stringify(cells));
         this.setState({
             'message': `Saved map info.`
         });
