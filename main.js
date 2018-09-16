@@ -43,6 +43,15 @@ function createWindow() {
             }
         }
     });
+    win.on('SAVE', (type) => {
+        if (ipcRender) {
+            const files = dialog.showOpenDialog(win,
+                { properties: ['openDirectory'] });
+            if (files) {
+                ipcRender.send('SAVE', files[0]);
+            }
+        }
+    });
     win.on('closed', () => {
         win = null
     })

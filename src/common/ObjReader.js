@@ -37,6 +37,7 @@ class ObjReader extends FileStream {
 
     readObj3() {
         const header = this.readObjHeader3();
+        header.show = true;
         const images = [];
         for (let k = 0; k < header.imageCount; k++) {
             let data = Array(header.iWidth * header.iHeight * 4);

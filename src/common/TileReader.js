@@ -39,7 +39,7 @@ class TileReader {
             }
             return r;
         } else {
-            console.log(tileId);
+            //console.log(tileId);
         }
     }
 

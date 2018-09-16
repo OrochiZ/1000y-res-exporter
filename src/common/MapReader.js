@@ -23,6 +23,12 @@ class MapReader extends FileStream {
     }
 
 
+
+    getCell(x, y) {
+        return this.cells[x + y * this.fileHeader.width];
+    }
+
+
     readBlock(bx, by) {
         const header = this.readBlockHeader();
         for (let y = 0; y < this.fileHeader.blockSize; y++) {

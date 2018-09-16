@@ -10,7 +10,10 @@ import TileReader from './common/TileReader';
 import ObjReader from './common/ObjReader';
 import QueueOp from './common/QueueOp';
 import ThumbLoader from './common/ThumbLoader';
+import CanvasBuffer from './common/CanvasBuffer';
 import path from 'path';
+import { viewSet } from './common/Config';
+import fs from 'fs';
 
 import "./style/main.css";
 
@@ -21,6 +24,12 @@ let queue;
 let tempCanvas;
 const CELL_WIDTH = 32;
 const CELL_HEIGHT = 24;
+
+let mViewSetting = { ...viewSet };
+
+let ox = -100;
+let oy = -100;
+let drawCount = 0;
 
 class App extends React.Component {
     last = Date.now();
@@ -33,7 +42,8 @@ class App extends React.Component {
         camera: {
             x: 115,
             y: 44
-        }
+        },
+        objList: []
     }
     onResize = (e) => {
         this.resetStageSize();
@@ -53,6 +63,8 @@ class App extends React.Component {
         });
         this.canvas.setAttribute('width', stageWidth);
         this.canvas.setAttribute('height', stageHeight);
+        this.overCanvas.setAttribute('width', stageWidth);
+        this.overCanvas.setAttribute('height', stageHeight);
     }
 
     gameRender = () => {
@@ -66,11 +78,21 @@ class App extends React.Component {
             let endX = startX + stageH;
             let endY = startY + stageV;
 
-            this.renderTile(startX, endX, startY, endY);
-            this.renderOver(startX, endX, startY, endY);
-            this.renderObj(startX, endX, startY, endY);
+            this.canvas.width = this.overCanvas.width = this.state.stageWidth;
+            drawCount = 0;
+            if (mViewSetting.baseTile)
+                this.renderTile(startX, endX, startY, endY);
+            if (mViewSetting.overTile)
+                this.renderOver(startX, endX, startY, endY);
+            if (mViewSetting.obj)
+                this.renderObj(startX, endX, startY, endY);
             this.renderRoof(startX, endX, startY, endY);
-            this.renderWalkable(startX, endX, startY, endY);
+            // this.setState({
+            //     message: `DrawCount:${drawCount}`
+            // })
+            this.overCanvas.width = this.state.stageWidth;
+            if (mViewSetting.grid) this.renderGrid();
+            if (mViewSetting.walkable) this.renderWalkable(startX, endX, startY, endY);
         }
 
         requestAnimationFrame(this.gameRender);
@@ -86,8 +108,10 @@ class App extends React.Component {
                 var screenY = y - y1;
                 let imageData = tileReader.getTile(cell.tileId, cell.tileNumber);
                 if (imageData) {
+                    //drawCount++;
                     let data = new ImageData(Uint8ClampedArray.from(imageData), 32, 24);
                     ctx.putImageData(data, screenX * 32, screenY * 24);
+
                 }
             }
         }
@@ -104,6 +128,7 @@ class App extends React.Component {
                 var screenY = y - y1;
                 let imageData = tileReader.getTile(cell.overId, cell.overNumber);
                 if (imageData) {
+                    //drawCount++;
                     let data = new ImageData(Uint8ClampedArray.from(imageData), 32, 24);
                     tempCanvas.getContext('2d').putImageData(data, 0, 0);
                     ctx.drawImage(tempCanvas, 0, 0, 32, 24, screenX * 32, screenY * 24, 32, 24);
@@ -113,7 +138,48 @@ class App extends React.Component {
     }
 
     renderObj(x1, x2, y1, y2) {
+        let shouldUpdateObjList = false;
+        if (ox !== x1 || oy !== y1) {
+            shouldUpdateObjList = true;
+        }
+        let objList = [];
 
+        let ctx = this.ctx;
+        if (!ctx) return;
+        for (let y = y1; y < y2; y++) {
+            for (let x = x1; x < x2; x++) {
+                var cell = mapReader.cells[x + y * mapReader.fileHeader.width];
+                var screenX = x - x1;
+                var screenY = y - y1;
+                if (cell.objId > 0) {
+                    const obj = objReader.getObj(cell.objId);
+                    if (obj) {
+                        if (shouldUpdateObjList) {
+                            objList.push(obj);
+                        }
+                        drawCount++;
+                        if (obj.header.show) {
+                            let data = new ImageData(Uint8ClampedArray.from(obj.images[0]), obj.header.iWidth, obj.header.iHeight);
+                            tempCanvas.getContext('2d').putImageData(data, 0, 0);
+                            //ctx.globalAlpha = .2;
+                            ctx.drawImage(tempCanvas, 0, 0, obj.header.iWidth, obj.header.iHeight,
+                                screenX * 32 + obj.header.ipx,
+                                screenY * 24 + obj.header.ipy,
+                                obj.header.iWidth,
+                                obj.header.iHeight);
+                        }
+                    }
+                }
+            }
+        }
+
+
+
+        if (objList.length > 0) {
+            this.setState({
+                objList
+            });
+        }
     }
 
     renderRoof(x1, x2, y1, y2) {
@@ -121,7 +187,40 @@ class App extends React.Component {
     }
 
     renderWalkable(x1, x2, y1, y2) {
+        let ctx = this.ctx;
+        if (!ctx) return;
+        for (let y = y1; y < y2; y++) {
+            for (let x = x1; x < x2; x++) {
+                var cell = mapReader.cells[x + y * mapReader.fileHeader.width];
+                var screenX = x - x1;
+                var screenY = y - y1;
+                if (cell.bMove) {
+                    ctx.globalAlpha = .3;
+                    ctx.fillStyle = 'red';
+                    ctx.fillRect(screenX * 32, screenY * 24, 32, 24);
+                    ctx.globalAlpha = 1;
+                }
+            }
+        }
+    }
 
+    renderGrid() {
+        if (!this.ctx) return;
+        let ctx = this.ctx;
+        let w = this.state.stageH;
+        let h = this.state.stageV;
+
+        ctx.strokeStyle = 'rgba(0, 0, 0, .8)';
+        for (let x = 0; x < w; x++) {
+            ctx.moveTo(x * 32 + .5, .5);
+            ctx.lineTo(x * 32 + .5, h * 24 + .5);
+        }
+
+        for (let y = 0; y < h; y++) {
+            ctx.moveTo(0.5, y * 24 + .5)
+            ctx.lineTo(w * 32 + .5, y * 24 + .5);
+        }
+        ctx.stroke();
     }
 
     onOpen = (evt, arg) => {
@@ -197,6 +296,167 @@ class App extends React.Component {
         }
     }
 
+    onToggleShow = (objId) => {
+        let list = this.state.objList;
+        let obj = list.find(o => o.header.objId === objId);
+        if (obj) {
+            obj.header.show = !obj.header.show;
+        }
+        this.setState({
+            objList: list
+        });
+
+        let nobj = objReader.getObj(objId);
+        if (nobj) {
+            nobj.header.show = obj.header.show;
+        }
+    }
+
+
+    saveMyMap(dir) {
+
+
+        let cw = 32;
+        let ch = 24;
+        let groupCount = 10;
+        let mapWidth = mapReader.fileHeader.width;
+        let mapHeight = mapReader.fileHeader.height;
+        let scale = .2;
+
+        let nw = cw * groupCount;
+        let nh = ch * groupCount;
+
+        let hCross = mapWidth / groupCount;
+        let vCross = mapHeight / groupCount;
+
+        let canvas = document.createElement('canvas');
+        canvas.setAttribute('width', nw);
+        canvas.setAttribute('height', nh);
+        let ctx = canvas.getContext('2d');
+
+        let miniCanvas = document.createElement('canvas');
+        miniCanvas.setAttribute('width', mapWidth * cw * scale);
+        miniCanvas.setAttribute('height', mapHeight * ch * scale);
+        let miniCtx = miniCanvas.getContext('2d');
+
+        const mapName = mapReader.getName();
+        if (!fs.existsSync(path.join(dir, mapName))) {
+            fs.mkdir(path.join(dir, mapName));
+        }
+
+        if (!fs.existsSync(path.join(dir, mapName, 'tile'))) {
+            fs.mkdir(path.join(dir, mapName, 'tile'));
+        }
+
+        if (!fs.existsSync(path.join(dir, mapName, 'obj'))) {
+            fs.mkdir(path.join(dir, mapName, 'obj'));
+        }
+
+        this.saveObj(dir);
+        return;
+
+        for (let y = 0; y < vCross; y++) {
+            for (let x = 0; x < hCross; x++) {
+                let sourceX = x * groupCount;
+                let sourceY = y * groupCount;
+
+                for (let i = 0; i < groupCount * groupCount; i++) {
+                    let cellX = i % groupCount;
+                    let cellY = Math.floor(i / groupCount);
+
+                    let cell = mapReader.getCell(cellX + sourceX, cellY + sourceY);
+                    var screenX = cellX * cw;
+                    var screenY = cellY * ch
+                    let imageData = tileReader.getTile(cell.tileId, cell.tileNumber);
+                    if (imageData) {
+                        let data = new ImageData(Uint8ClampedArray.from(imageData), cw, ch);
+                        ctx.putImageData(data, screenX, screenY);
+                    }
+
+                    imageData = tileReader.getTile(cell.overId, cell.overNumber);
+                    if (imageData) {
+                        //drawCount++;
+                        let data = new ImageData(Uint8ClampedArray.from(imageData), cw, ch);
+                        tempCanvas.getContext('2d').putImageData(data, 0, 0);
+                        ctx.drawImage(tempCanvas, 0, 0, cw, ch, screenX, screenY, cw, ch);
+                    }
+                }
+
+                miniCtx.drawImage(
+                    canvas,
+                    0, 0,
+                    canvas.width, canvas.height,
+                    sourceX * cw * scale, sourceY * ch * scale,
+                    canvas.width * scale, canvas.height * scale
+                )
+                let imgBuf = CanvasBuffer(canvas, 'image/jpeg', 65);
+                fs.writeFileSync(path.join(dir, mapName, 'tile', `${x + y * hCross}.jpg`), imgBuf);
+                this.setState({
+                    'message': `Save Tile Block ${x}-${y}`
+                })
+            }
+        }
+
+        let miniBuf = CanvasBuffer(miniCanvas, 'image/jpeg', 65);
+        fs.writeFileSync(path.join(dir, mapName, `mini.jpg`), miniBuf);
+        this.setState({
+            'message': `Done.`
+        });
+
+        setTimeout(() => {
+            this.saveMapCell(dir);
+        }, 0);
+    }
+
+    saveMapCell(dir) {
+        const mapName = mapReader.getName();
+        let str = '';
+        for (let i = 0; i < mapReader.cells.length; i++) {
+            let cell = mapReader.cells[i];
+            str += `${cell.objId},${cell.objNumber},${cell.roofId},${cell.bMove}\n`;
+        }
+        fs.writeFileSync(path.join(dir, mapName, `cell.txt`), str);
+        this.setState({
+            'message': `Saved map info.`
+        });
+
+        setTimeout(() => {
+            this.saveObj(dir);
+        }, 0);
+    }
+
+    saveObj(dir) {
+        const mapName = mapReader.getName();
+        let objs = [];
+
+        let canvas = document.createElement('canvas');
+        let ctx = canvas.getContext('2d');
+        for (let i = 0; i < objReader.objs.length; i++) {
+            objs.push(objReader.objs[i].header);
+            let obj = objReader.objs[i];
+            let objId = obj.header.objId.toString();
+
+            canvas.setAttribute('width', obj.header.iWidth * obj.images.length);
+            canvas.setAttribute('height', obj.header.iHeight);
+            for (let j = 0; j < obj.images.length; j++) {
+
+                let data = new ImageData(Uint8ClampedArray.from(obj.images[j]), obj.header.iWidth, obj.header.iHeight);
+                ctx.putImageData(data, j * obj.header.iWidth, 0);
+
+            }
+
+            let fileBuf = CanvasBuffer(canvas, 'image/png');
+            fs.writeFileSync(path.join(dir, mapName, `obj`, `${objId}.png`), fileBuf);
+
+        }
+        let str = JSON.stringify(objs);
+        fs.writeFileSync(path.join(dir, mapName, `obj.json`), str);
+        this.setState({
+            'message': `Saved obj info.`
+        });
+
+    }
+
     componentDidMount() {
         tempCanvas = document.createElement('canvas');
         tempCanvas.setAttribute('width', 1024);
@@ -204,11 +464,22 @@ class App extends React.Component {
         this.canvas = document.getElementById('stage');
         this.ctx = this.canvas.getContext('2d');
         this.canvasContainer = this.canvas.parentNode;
+        this.overCanvas = document.getElementById('stageOver');
+        this.overCtx = this.overCanvas.getContext('2d');
+
         window.addEventListener('resize', this.onResize);
-        setTimeout(() => this.resetStageSize(), 0);
         ipcRenderer.send('page_init', 'init');
         ipcRenderer.on('OPEN', this.onOpen);
+        ipcRenderer.on('viewsetchange', (evt, arg) => {
+            mViewSetting = { ...arg };
+        });
+        ipcRenderer.on("SAVE", (e, dir) => {
+            this.saveMyMap(dir);
+        });
+
         window.addEventListener('keydown', this.onKeydown);
+
+        setTimeout(() => this.resetStageSize(), 0);
     }
 
     componentWillUnmount() {
@@ -217,17 +488,18 @@ class App extends React.Component {
     }
 
     render() {
-        const { message, mapInfo, camera, thumb, stageH, stageV } = this.state;
+        const { message, mapInfo, camera, thumb, stageH, stageV, objList } = this.state;
         return (
             <Layout style={{ height: '100%' }}>
                 <Layout style={{ height: '100%' }}>
                     <Content className="stage">
                         <canvas id="stage" width="550" height="400"></canvas>
+                        <canvas id="stageOver" width="550" height="400"></canvas>
                     </Content>
                     <Sider className="sidebar">
                         <Thumb thumb={thumb} mapInfo={mapInfo} camera={camera} stageH={stageH} stageV={stageV} />
                         <UnitProperty mapInfo={mapInfo} camera={camera} />
-                        <UnitLibrary />
+                        <UnitLibrary objList={objList} onToggleShow={this.onToggleShow} />
                     </Sider>
                 </Layout>
                 <Footer className="statusbar">{message}</Footer>

@@ -13,7 +13,16 @@ const template = [
                 click: (item, window, event) => { window.emit('OPEN', '.map') }
             },
             { label: 'Open New .atz file', click: (item, window, event) => { window.emit('OPEN', '.atz') } },
-            { label: 'Open New .obj file', accelerator: 'CommandOrControl+Option+O', click: (item, window, event) => { window.emit('OPEN', '.obj') } }
+            {
+                label: 'Open New .obj file',
+                accelerator: 'CommandOrControl+Option+O',
+                click: (item, window, event) => { window.emit('OPEN', '.obj') }
+            },
+            {
+                label: 'Save As',
+                accelerator: 'CommandOrControl+Alt+S',
+                click: (item, window, event) => { window.emit('SAVE', 'map') }
+            }
         ]
     },
     {

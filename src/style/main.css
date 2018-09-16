@@ -171,3 +171,32 @@ canvas {
     line-height: 22px;
     text-indent: 10px;
 }
+
+#stage {
+    position: absolute;
+    top: 0;
+}
+
+#stageOver {
+    position: absolute;
+    left: 0;
+}
+
+.unit_container {
+    height: 420px;
+    overflow-y: auto;
+    padding-top: 10px;
+    color: rgb(226, 192, 141);
+}
+
+.obj_label {
+    padding-left: 10px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    cursor: default;
+}
+
+.obj_label_eye {
+    display: inline-block;
+    width: 18px;
+}

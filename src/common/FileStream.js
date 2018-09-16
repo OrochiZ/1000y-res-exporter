@@ -1,8 +1,13 @@
 const fs = require('fs');
+const path = require('path');
 
 class FileStream {
     constructor(filename) {
         this.filename = filename;
+    }
+
+    getName() {
+        return path.basename(this.filename, path.extname(this.filename));
     }
 
     read(filename) {
